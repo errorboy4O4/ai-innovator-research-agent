@@ -11,6 +11,7 @@ from .models import (
     ConflictRecord,
     ExtractedFact,
     FactType,
+    SourceClass,
     TriageResult,
     VerifiedFact,
 )
@@ -116,6 +117,20 @@ def detect_conflicts(
     return conflicts
 
 
+def _preference_key(
+    fact: ExtractedFact,
+    triage_by_id: dict[str, TriageResult],
+) -> tuple[int, bool, int]:
+    """Source preference key for conflict resolution.
+    1. Source priority rank (lower = higher authority)
+    2. Staleness (False = fresh, True = stale; fresh preferred)
+    3. Negative publication ordinal (more recent date preferred)
+    """
+    triage = triage_by_id[fact.source_id]
+    pub_ordinal = triage.published.toordinal() if triage.published else 0
+    return (_source_rank(triage), triage.is_stale, -pub_ordinal)
+
+
 def resolve_conflict(
     metric: str,
     period: str,
@@ -123,20 +138,22 @@ def resolve_conflict(
     triage_by_id: dict[str, TriageResult],
 ) -> ConflictRecord:
     """Resolve a conflict using source priority and staleness rules."""
-    ranked = sorted(
-        facts,
-        key=lambda f: (
-            _source_rank(triage_by_id[f.source_id]),
-            -triage_by_id[f.source_id].is_stale,
-        ),
-    )
+    ranked = sorted(facts, key=lambda f: _preference_key(f, triage_by_id))
     preferred = ranked[0]
 
-    # Build resolution explanation
     pref_triage = triage_by_id[preferred.source_id]
+    is_primary = pref_triage.source_class in {
+        SourceClass.OFFICIAL_FILING,
+        SourceClass.OFFICIAL_TRANSCRIPT,
+    }
+    if is_primary:
+        reason = "Higher-priority regulatory filing/primary source."
+    else:
+        reason = f"Higher authority tier ({pref_triage.source_class.value})."
+
     resolution = (
         f"Preferred {preferred.source_id} ({pref_triage.source_class.value}) "
-        f"over alternatives. Primary source is internally consistent."
+        f"over alternatives. {reason}"
     )
 
     return ConflictRecord(
@@ -148,27 +165,62 @@ def resolve_conflict(
     )
 
 
+def _parse_period_date(period_str: str) -> tuple[int, int]:
+    """Extract a comparable (year, quarter_or_month) tuple from a period string."""
+    p = period_str.lower().strip()
+    yr = 0
+    match_yr = re.search(r"\b(20\d\d)\b", p)
+    if match_yr:
+        yr = int(match_yr.group(1))
+    else:
+        match_fy = re.search(r"fy\s*(\d{2,4})", p)
+        if match_fy:
+            val = int(match_fy.group(1))
+            yr = val if val > 2000 else 2000 + val
+
+    sub = 0
+    match_q = re.search(r"q([1-4])", p)
+    if match_q:
+        sub = int(match_q.group(1)) * 3
+    else:
+        months = [
+            "jan",
+            "feb",
+            "mar",
+            "apr",
+            "may",
+            "jun",
+            "jul",
+            "aug",
+            "sep",
+            "oct",
+            "nov",
+            "dec",
+        ]
+        for idx, mo in enumerate(months, start=1):
+            if mo in p:
+                sub = idx
+                break
+    return (yr, sub)
+
+
 def run_arithmetic_checks(
     facts: list[ExtractedFact],
 ) -> list[ExtractedFact]:
-    """Cross-check figures using arithmetic: YoY growth, margin calculations."""
+    """Cross-check figures using arithmetic: margin consistency, growth, tax demands."""
     own_calcs: list[ExtractedFact] = []
-    facts_by_metric: dict[str, list[ExtractedFact]] = defaultdict(list)
-    for f in facts:
-        facts_by_metric[f.metric.lower()].append(f)
 
-    # Check YoY growth: if we have current and prior revenue, compute growth
-    revenue_facts = {}
-    for f in facts:
-        if "revenue" in f.metric.lower():
-            revenue_facts[f.period.lower()] = f
-
-    # Check EBITDA margin consistency
+    # Check EBITDA margin consistency dynamically against reported margin facts
     ebitda_facts = [
-        f for f in facts if "ebitda" in f.metric.lower() and "margin" not in f.metric.lower()
+        f
+        for f in facts
+        if _canonical_metric(f.metric) == "ebitda" and _parse_numeric(f.value) is not None
     ]
-    revenue_list = [f for f in facts if "revenue" in f.metric.lower()]
-    [f for f in facts if "ebitda_margin" in f.metric.lower()]
+    revenue_list = [
+        f
+        for f in facts
+        if _canonical_metric(f.metric) == "revenue" and _parse_numeric(f.value) is not None
+    ]
 
     for ebitda in ebitda_facts:
         for rev in revenue_list:
@@ -177,11 +229,29 @@ def run_arithmetic_checks(
                 rev_val = _parse_numeric(rev.value)
                 if ebitda_val and rev_val and rev_val > 0:
                     computed_margin = round(ebitda_val / rev_val * 100, 1)
-                    match_note = (
-                        "matches reported 11.2% margin"
-                        if computed_margin == 11.2
-                        else "does not match reported 11.2% margin"
-                    )
+
+                    # Dynamically compare against reported margin fact if present
+                    reported_margins = [
+                        f
+                        for f in facts
+                        if _canonical_metric(f.metric) == "ebitda_margin"
+                        and _canonical_period(f.period) == _canonical_period(ebitda.period)
+                        and _parse_numeric(f.value) is not None
+                    ]
+                    if reported_margins:
+                        rep_val = _parse_numeric(reported_margins[0].value)
+                        if rep_val is not None:
+                            matches = abs(computed_margin - rep_val) < 0.2
+                            match_note = (
+                                f"matches reported {reported_margins[0].value} margin"
+                                if matches
+                                else f"does not match reported {reported_margins[0].value} margin"
+                            )
+                        else:
+                            match_note = f"computed margin {computed_margin}%"
+                    else:
+                        match_note = f"computed margin {computed_margin}%"
+
                     own_calcs.append(
                         ExtractedFact(
                             fact_id=f"CALC_margin_{ebitda.source_id}_{rev.source_id}",
@@ -199,63 +269,71 @@ def run_arithmetic_checks(
                         )
                     )
 
-    # Check order book growth
-    ob_facts = [f for f in facts if "order_book" in f.metric.lower()]
+    # Check order book growth with chronological period sorting
+    ob_facts = [
+        f for f in facts if "order_book" in f.metric.lower() and _parse_numeric(f.value) is not None
+    ]
     if len(ob_facts) >= 2:
         values = [(f, _parse_numeric(f.value)) for f in ob_facts]
-        values = [(f, v) for f, v in values if v is not None]
-        if len(values) >= 2:
-            values.sort(key=lambda x: x[0].period)
-            old_f, old_v = values[0]
-            new_f, new_v = values[-1]
-            if old_v > 0:
-                growth = round((new_v / old_v - 1) * 100, 1)
-                own_calcs.append(
-                    ExtractedFact(
-                        fact_id="CALC_ob_growth",
-                        source_id=f"{old_f.source_id},{new_f.source_id}",
-                        metric="order_book_growth_yoy",
-                        value=f"{growth}%",
-                        unit="%",
-                        period=new_f.period,
-                        fact_type=FactType.OWN_CALCULATION,
-                        statement=(
-                            f"Order book growth: {new_f.value} / {old_f.value} - 1 = {growth}%"
-                        ),
-                        quote="",
-                    )
+        values.sort(key=lambda x: _parse_period_date(x[0].period))
+        old_f, old_v = values[0]
+        new_f, new_v = values[-1]
+        if old_v and old_v > 0 and new_v is not None:
+            growth = round((new_v / old_v - 1) * 100, 1)
+            own_calcs.append(
+                ExtractedFact(
+                    fact_id="CALC_ob_growth",
+                    source_id=f"{old_f.source_id},{new_f.source_id}",
+                    metric="order_book_growth_yoy",
+                    value=f"{growth}%",
+                    unit="%",
+                    period=new_f.period,
+                    fact_type=FactType.OWN_CALCULATION,
+                    statement=(f"Order book growth: {new_f.value} / {old_f.value} - 1 = {growth}%"),
+                    quote="",
                 )
+            )
 
-    # Check GST demand as % of quarterly PAT
-    gst_facts = [
+    # Check tax/legal demand relative to profit (scale comparison)
+    demand_facts = [
         f
         for f in facts
-        if any(k in f.metric.lower() for k in ["gst", "tax_demand"]) and _parse_numeric(f.value)
+        if any(
+            k in f.metric.lower() for k in ["gst", "tax_demand", "penalty", "contingent_liability"]
+        )
+        and _parse_numeric(f.value) is not None
     ]
     pat_facts = [
         f
         for f in facts
-        if any(k in f.metric.lower() for k in ["pat", "profit_after_tax", "net_profit"])
-        and _parse_numeric(f.value)
-        and _canonical_period(f.period) == "q1 fy27"
+        if _canonical_metric(f.metric) == "profit_after_tax" and _parse_numeric(f.value) is not None
     ]
-    if gst_facts and pat_facts:
-        gst_val = _parse_numeric(gst_facts[0].value)
-        pat_val = _parse_numeric(pat_facts[0].value)
-        if gst_val and pat_val and pat_val > 0:
-            ratio = round((gst_val / pat_val) * 100, 1)
+    if demand_facts and pat_facts:
+        demand_f = demand_facts[0]
+        pat_f = pat_facts[0]
+        demand_val = _parse_numeric(demand_f.value)
+        pat_val = _parse_numeric(pat_f.value)
+        if demand_val and pat_val and pat_val > 0:
+            ratio = round((demand_val / pat_val) * 100, 1)
+            period_label = pat_f.period or "reported"
+            clean_metric = (
+                demand_f.metric.replace("_", " ").upper()
+                if "gst" in demand_f.metric.lower()
+                else demand_f.metric.replace("_", " ")
+            )
             own_calcs.append(
                 ExtractedFact(
-                    fact_id="CALC_gst_pat_ratio",
-                    source_id=f"{gst_facts[0].source_id},{pat_facts[0].source_id}",
-                    metric="gst_demand_as_pct_of_pat",
+                    fact_id=f"CALC_demand_pat_ratio_{demand_f.source_id}",
+                    source_id=f"{demand_f.source_id},{pat_f.source_id}",
+                    metric=f"{demand_f.metric}_to_pat_ratio",
                     value=f"{ratio}%",
                     unit="%",
-                    period=pat_facts[0].period,
+                    period=demand_f.period,
                     fact_type=FactType.OWN_CALCULATION,
                     statement=(
-                        f"GST demand of ₹{gst_val} crore represents approximately {ratio}% of "
-                        f"one quarter's profit (₹{pat_val} crore) (our calculation)"
+                        f"{clean_metric} demand of {demand_f.value} represents approximately "
+                        f"{ratio}% of {period_label} PAT ({pat_f.value}) "
+                        f"(our calculation; scale comparison)"
                     ),
                     quote="",
                 )

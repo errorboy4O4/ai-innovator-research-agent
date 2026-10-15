@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from .config import PROMPTS_DIR, TEMPERATURE
+from .config import PROMPTS_DIR, STALE_CUTOFF_DAYS, TEMPERATURE
 from .llm import call_llm_json
 from .models import (
     Reliability,
@@ -51,14 +51,28 @@ def _parse_triage_response(doc_id: str, data: dict) -> TriageResult:
         entity_note=data.get("entity_note", ""),
         source_class=SourceClass(data.get("source_class", "news")),
         reliability=Reliability(data.get("reliability", "medium")),
-        is_stale=data.get("is_stale", False),
+        is_stale=False,
         usable=Usability(data.get("usable", "full")),
         reason=data.get("reason", ""),
     )
 
 
 def _apply_overrides(result: TriageResult, doc: SanitisedDocument) -> TriageResult:
-    """Hard code overrides: injection-flagged docs cannot be high reliability or full usability."""
+    """Hard code overrides: deterministic staleness, injection limits, entity exclusion."""
+    result.is_stale = doc.age_days > STALE_CUTOFF_DAYS
+    result.published = doc.published
+
+    if result.is_stale:
+        if result.usable == Usability.FULL:
+            logger.info(
+                "%s: marking usability as LIMITED (stale: %d days old)",
+                doc.id,
+                doc.age_days,
+            )
+            result.usable = Usability.LIMITED
+        if not result.reason:
+            result.reason = f"Document is older than {STALE_CUTOFF_DAYS} days"
+
     if doc.has_injection:
         if result.reliability != Reliability.LOW:
             logger.info("%s: overriding reliability to LOW (injection detected)", doc.id)

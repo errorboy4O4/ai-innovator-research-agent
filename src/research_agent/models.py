@@ -74,9 +74,10 @@ class TriageResult(BaseModel):
     entity_note: str
     source_class: SourceClass
     reliability: Reliability
-    is_stale: bool
+    is_stale: bool = False
     usable: Usability
     reason: str
+    published: date | None = None
 
 
 class FactType(str, Enum):

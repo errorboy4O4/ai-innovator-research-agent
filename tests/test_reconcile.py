@@ -1,5 +1,7 @@
 """Tests for the reconcile module: conflict detection and arithmetic checks."""
 
+from datetime import date
+
 from research_agent.models import (
     ExtractedFact,
     FactType,
@@ -33,7 +35,11 @@ def _fact(
 
 
 def _triage(
-    doc_id: str, source_class: str = "official_filing", reliability: str = "high"
+    doc_id: str,
+    source_class: str = "official_filing",
+    reliability: str = "high",
+    is_stale: bool = False,
+    published: date | None = None,
 ) -> TriageResult:
     return TriageResult(
         doc_id=doc_id,
@@ -41,9 +47,10 @@ def _triage(
         entity_note="",
         source_class=SourceClass(source_class),
         reliability=Reliability(reliability),
-        is_stale=False,
+        is_stale=is_stale,
         usable=Usability.FULL,
         reason="",
+        published=published,
     )
 
 
@@ -113,3 +120,40 @@ def test_arithmetic_check_with_wrong_revenue():
     margin_calcs = [c for c in calcs if "margin" in c.metric]
     assert len(margin_calcs) == 1
     assert "9.8" in margin_calcs[0].value
+
+
+def test_resolve_conflict_prefers_non_stale_over_stale_in_same_tier():
+    facts = [
+        _fact("S_stale", "promoter_pledge", "35%", fact_id="f_stale"),
+        _fact("S_fresh", "promoter_pledge", "4.1%", fact_id="f_fresh"),
+    ]
+    triage_by_id = {
+        "S_stale": _triage("S_stale", "news", "medium", is_stale=True, published=date(2024, 3, 18)),
+        "S_fresh": _triage("S_fresh", "news", "medium", is_stale=False, published=date(2026, 8, 9)),
+    }
+    record = resolve_conflict("promoter_pledge", "Q1 FY27", facts, triage_by_id)
+    assert record.preferred_fact_id == "f_fresh"
+
+
+def test_resolve_conflict_prefers_more_recent_date():
+    facts = [
+        _fact("S_older", "capex", "100", fact_id="f_old"),
+        _fact("S_newer", "capex", "120", fact_id="f_new"),
+    ]
+    triage_by_id = {
+        "S_older": _triage("S_older", "news", "medium", published=date(2026, 7, 1)),
+        "S_newer": _triage("S_newer", "news", "medium", published=date(2026, 8, 15)),
+    }
+    record = resolve_conflict("capex", "FY27", facts, triage_by_id)
+    assert record.preferred_fact_id == "f_new"
+
+
+def test_order_book_chronological_sort():
+    facts = [
+        _fact("S1", "order_book", "3900", period="30 June 2026"),
+        _fact("S2", "order_book", "3150", period="30 June 2025"),
+    ]
+    calcs = run_arithmetic_checks(facts)
+    ob_calcs = [c for c in calcs if "order_book" in c.metric]
+    assert len(ob_calcs) == 1
+    assert "23.8%" in ob_calcs[0].value

@@ -199,13 +199,13 @@ To add real-time market data (such as live prices and valuation ratios):
 ## 8. Running Tests and Linters
 
 ```bash
-# Run the full unit test suite (28 tests collected and passed):
+# Run the full unit test suite (31 tests collected and passed):
 python -m pytest tests/ -v
 # Or on Unix systems with GNU Make:
 make test
 
 # Output:
-# ============================= 28 passed in 0.55s ==============================
+# ============================= 31 passed in 0.22s ==============================
 
 # Run ruff code linter and formatting checks:
 python -m ruff check src/ tests/
