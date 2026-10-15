@@ -41,7 +41,7 @@ Sarvottam Cables Ltd manufactures cables and wire products. In Q1 FY27, revenue 
 - The sources do not give a current share price or valuation multiples; the latest recorded price is ₹1,012 as of 8 August 2026 [S1]. Full-year cash flow figures are also absent from the disclosures.
 - Document S5 contained a prompt injection attempt hidden in HTML comments and was excluded from the factual analysis [S5].
 - Document S6 was excluded as it refers to a different legal entity operating in local cable TV and broadband [S6].
-- Net debt to equity was reported at 0.35x, but absolute debt figures and cash equivalents require further examination [S2].
+- Net debt to equity was reported at 0.35x [S2], but absolute debt figures and cash balances are absent from the disclosures.
 
 ## 5. Sources
 | ID | Publisher | Date | Type | Used for | Reliability |
@@ -61,17 +61,17 @@ Sarvottam Cables Ltd manufactures cables and wire products. In Q1 FY27, revenue 
 2. **Bear case:** Specified "Copper prices rose nearly 14%" to match the literal scope of source [S1] rather than generic raw materials.
 3. **Bear case:** Clarified that promoter pledge is "4.1% of promoter holdings" from source [S8].
 4. **Bear case:** Labeled the ₹46.3 crore GST demand comparison as "(our calculation; scale comparison)" and added management's stance ("plans to appeal") from source [S7].
-5. **Open questions & Sources:** Clarified that S3's figures are internally consistent (its EBITDA and margin agree with its revenue), added the market data disclosure gap (missing live valuation multiples and full-year cash flow figures), and added "net debt" to the [S2] Sources table row.
+5. **Open questions & Sources:** Clarified that S3's figures are internally consistent (its EBITDA and margin agree with its revenue), added the market data disclosure gaps (missing live valuation multiples, full-year cash flow figures, and absolute balance sheet debt/cash figures), and added "net debt" to the [S2] Sources table row.
 
 ---
 
 ## 3. Test Log (Condensed Summary)
 
-We developed and evaluated the research agent across three iterations:
+We developed and evaluated the research agent across three live development iterations using `gemini-3.5-flash-lite`:
 
-1. **Run 1 (Baseline):** A naive single-call architecture without sanitisation or triage. It failed 6 of 13 evaluation traps: it fell for the hidden prompt injection in the blog [S5] by quoting target prices and positive analyst consensus; confused legal entities by citing an ₹8 lakh municipal penalty on a local cable TV operator [S6]; reported a stale 35% promoter pledge from 2024 [S4]; and repeated a conflicting 35% revenue jump [S1].
-2. **Run 2 (Triage & Fact Extraction):** Added an HTML comment/regex sanitiser (`sanitize.py`), per-document LLM triage (`triage.py`), and atomic fact extraction with exact substring quote verification (`extract.py`). This eliminated prompt injection vulnerabilities, excluded the irrelevant entity [S6], and recognized source staleness. However, the revenue conflict (₹1,428 cr vs ₹1,248 cr) was merely listed without mathematical cross-check, and management claims lacked explicit attribution.
-3. **Run 3 (Full Pipeline):** Implemented deterministic conflict reconciliation and arithmetic checks (`reconcile.py`), automated code verification (`verify.py`), and an LLM critic repair loop. The arithmetic cross-check verified that ₹140 crore EBITDA matches the 11.2% margin only at ₹1,248 crore (primary filing [S3]), resolving the conflict and flagging the discrepancy in Open Questions. Management claims were explicitly attributed, GST demand materiality was calculated (56.5% of quarterly PAT, noted as a multi-year scale comparison), and 12 of 13 evaluation traps were fully handled with 1 partly handled (honest caveat on multi-year scale ratios vs recurring operational expense) with 0 code verification issues.
+1. **Run 1 (Baseline Variant - 6 Handled, 5 Partly, 2 Missed):** A naive single-call architecture without triage, fact tables, or reconciliation (`runs/run_1_baseline/`). While pre-sanitisation stripped the prompt injection in [S5], the prompt had no entity filter and included an unrelated entity's municipal wiring penalty in the Bear Case [S6]; quoted contradictory revenue numbers (₹1,428 cr vs ₹1,248 cr) without arithmetic resolution; treated management forward guidance as fact; and omitted valuation data gaps.
+2. **Run 2 (Triage & Fact Extraction - 10 Handled, 3 Partly, 0 Missed):** Added per-document LLM triage (`triage.py`) and atomic fact extraction with substring quote verification (`extract.py`) in `runs/run_2_triage/`. This completely excluded the irrelevant entity [S6], quarantined prompt injection [S5], and recognized source staleness [S4]. However, the revenue conflict was selected by source hierarchy without arithmetic verification against reported margins, and GST materiality remained uncalculated.
+3. **Run 3 (Full Pipeline - 12 Handled, 1 Partly, 0 Missed):** Implemented deterministic arithmetic cross-checks (`reconcile.py`), automated code verification (`verify.py`), and an LLM critic repair loop in `runs/run_3_verify/`. Arithmetic cross-checks verified that ₹140 crore EBITDA matches the 11.2% margin only at ₹1,248 crore (primary filing [S3]), resolving the conflict and flagging the discrepancy in Open Questions. Management claims were explicitly attributed, GST demand materiality was calculated (56.5% of quarterly PAT, noted as a multi-year scale comparison), and 12 of 13 evaluation traps were fully handled with 1 partly handled with 0 code verification issues.
 
 Full details and comparative tables are available in [`docs/TEST_LOG.md`](docs/TEST_LOG.md).
 
