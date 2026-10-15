@@ -13,7 +13,7 @@ An evidence-bound AI research agent that ingests scraped documents about an NSE-
 ### Setup
 ```bash
 # 1. Clone repository
-git clone <GITHUB_REPO_URL_PLACEHOLDER>
+git clone https://github.com/errorboy4O4/ai-innovator-research-agent.git
 cd sarvottam-research-agent
 
 # 2. Create and activate a virtual environment

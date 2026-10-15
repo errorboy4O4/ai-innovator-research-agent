@@ -6,11 +6,11 @@ This file contains the exact text blocks ready to be pasted into the Super Inves
 
 ## 1. Link to Build
 
-- **GitHub Repository:** `<GITHUB_REPO_URL_PLACEHOLDER>`
+- **GitHub Repository:** `https://github.com/errorboy4O4/ai-innovator-research-agent`
 - **System Prompt File:** `prompts/system_prompt.md`
 - **README File:** `README.md`
 
-*(Note: Replace `<GITHUB_REPO_URL_PLACEHOLDER>` with your public repository link after pushing).*
+*(GitHub repository is public and ready for review.)*
 
 ---
 
