@@ -103,7 +103,7 @@ out/briefs/<TICKER>_brief.md  +  out/traces/<TICKER>_<timestamp>.json
 
 ## 4. Models Used and Rationale
 
-- **Default Model:** `gemini-2.0-flash` (via the official `google-genai` SDK)
+- **Default Model:** `gemini-3.5-flash-lite` (via the official `google-genai` SDK; configurable via `GEMINI_MODEL` in `.env`)
 - **Why Flash-Class:** Fast inference, robust structured JSON schema support, generous free-tier limits, and low latency across multi-step pipeline iterations.
 - **Temperature Settings:**
   - `triage` (0.1) and `extract` (0.1): Minimal randomness for deterministic classification and exact quote matching.
