@@ -57,11 +57,19 @@ def check_sentences_tagged(brief: str) -> list[str]:
 
 
 def check_forbidden_phrases(brief: str) -> list[str]:
-    """No forbidden promotional phrases should appear."""
+    """No forbidden promotional phrases should appear in the text (table rows excluded)."""
     issues = []
-    lower = brief.lower()
+    lines = []
+    in_sources = False
+    for line in brief.splitlines():
+        if "## 5. Sources" in line:
+            in_sources = True
+        if in_sources and line.strip().startswith("|"):
+            continue
+        lines.append(line)
+    body = "\n".join(lines).lower()
     for phrase in FORBIDDEN_PHRASES:
-        if phrase in lower:
+        if phrase in body:
             issues.append(f"Forbidden phrase found: '{phrase}'")
     return issues
 

@@ -124,7 +124,7 @@ class PipelineTrace(BaseModel):
     model: str
     variant: str
     timestamp: str
-    documents_loaded: int
+    documents_loaded: int = 0
     findings: list[Finding] = Field(default_factory=list)
     triage_results: list[TriageResult] = Field(default_factory=list)
     facts_extracted: int = 0

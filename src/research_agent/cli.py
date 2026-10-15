@@ -35,6 +35,12 @@ def cmd_run(args):
     out_dir = Path(args.out) if args.out else Path("out")
     as_of = _parse_date(args.as_of)
 
+    if getattr(args, "dry_run", False):
+        from .pipeline import run_scan
+
+        run_scan(pack_dir, as_of)
+        return
+
     brief, trace = run_pipeline(
         ticker=args.ticker,
         pack_dir=pack_dir,
@@ -86,6 +92,11 @@ def main():
         choices=["baseline", "triage", "full"],
         default="full",
         help="Pipeline variant to run",
+    )
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Run ingest and sanitise only without LLM API key",
     )
     run_parser.set_defaults(func=cmd_run)
 
