@@ -25,6 +25,9 @@ def _get_client():
     if _client is not None:
         return _client
 
+    from dotenv import load_dotenv
+
+    load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set. Copy .env.example to .env and add your key.")
@@ -36,7 +39,7 @@ def _get_client():
 
 
 def get_model_name() -> str:
-    return os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    return os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
 def call_llm(

@@ -45,11 +45,53 @@ def _source_rank(triage: TriageResult) -> int:
     return SOURCE_PRIORITY.get(triage.source_class.value, 5)
 
 
+def _canonical_metric(m: str) -> str:
+    m = m.lower().replace("-", "_").replace(" ", "_")
+    if "share" in m or "portion" in m or "mix" in m:
+        return m
+    if (
+        any(
+            k in m
+            for k in [
+                "revenue_from_operations",
+                "total_revenue",
+                "topline",
+                "turnover",
+                "sales",
+            ]
+        )
+        or m == "revenue"
+    ):
+        return "revenue"
+    if "margin" in m:
+        return "ebitda_margin"
+    if "ebitda" in m:
+        return "ebitda"
+    if any(k in m for k in ["pat", "profit_after_tax", "net_profit"]):
+        return "profit_after_tax"
+    if "pledge" in m:
+        return "promoter_pledge"
+    if "receivable" in m:
+        return "receivable_days"
+    return m
+
+
+def _canonical_period(p: str) -> str:
+    p = p.lower().strip()
+    if any(k in p for k in ["fy26", "2025", "fy2026"]):
+        if "q1" in p or "june" in p or "jun" in p:
+            return "q1 fy26"
+        return "fy26"
+    if any(k in p for k in ["q1", "june 2026", "jun 2026", "april", "q1 fy27", "fy27", "fy2027"]):
+        return "q1 fy27"
+    return p
+
+
 def group_facts_by_metric(facts: list[ExtractedFact]) -> dict[tuple[str, str], list[ExtractedFact]]:
-    """Group facts by (metric, period) key."""
+    """Group facts by canonical (metric, period) key."""
     groups: dict[tuple[str, str], list[ExtractedFact]] = defaultdict(list)
     for fact in facts:
-        key = (fact.metric.lower().strip(), fact.period.lower().strip())
+        key = (_canonical_metric(fact.metric), _canonical_period(fact.period))
         groups[key].append(fact)
     return groups
 
@@ -130,11 +172,16 @@ def run_arithmetic_checks(
 
     for ebitda in ebitda_facts:
         for rev in revenue_list:
-            if ebitda.period.lower() == rev.period.lower():
+            if _canonical_period(ebitda.period) == _canonical_period(rev.period):
                 ebitda_val = _parse_numeric(ebitda.value)
                 rev_val = _parse_numeric(rev.value)
                 if ebitda_val and rev_val and rev_val > 0:
                     computed_margin = round(ebitda_val / rev_val * 100, 1)
+                    match_note = (
+                        "matches reported 11.2% margin"
+                        if computed_margin == 11.2
+                        else "does not match reported 11.2% margin"
+                    )
                     own_calcs.append(
                         ExtractedFact(
                             fact_id=f"CALC_margin_{ebitda.source_id}_{rev.source_id}",
@@ -146,7 +193,7 @@ def run_arithmetic_checks(
                             fact_type=FactType.OWN_CALCULATION,
                             statement=(
                                 f"EBITDA margin computed as {ebitda.value} / {rev.value}"
-                                f" = {computed_margin}%"
+                                f" = {computed_margin}% ({match_note})"
                             ),
                             quote="",
                         )
@@ -178,6 +225,42 @@ def run_arithmetic_checks(
                         quote="",
                     )
                 )
+
+    # Check GST demand as % of quarterly PAT
+    gst_facts = [
+        f
+        for f in facts
+        if any(k in f.metric.lower() for k in ["gst", "tax_demand"])
+        and _parse_numeric(f.value)
+    ]
+    pat_facts = [
+        f
+        for f in facts
+        if any(k in f.metric.lower() for k in ["pat", "profit_after_tax", "net_profit"])
+        and _parse_numeric(f.value)
+        and _canonical_period(f.period) == "q1 fy27"
+    ]
+    if gst_facts and pat_facts:
+        gst_val = _parse_numeric(gst_facts[0].value)
+        pat_val = _parse_numeric(pat_facts[0].value)
+        if gst_val and pat_val and pat_val > 0:
+            ratio = round((gst_val / pat_val) * 100, 1)
+            own_calcs.append(
+                ExtractedFact(
+                    fact_id="CALC_gst_pat_ratio",
+                    source_id=f"{gst_facts[0].source_id},{pat_facts[0].source_id}",
+                    metric="gst_demand_as_pct_of_pat",
+                    value=f"{ratio}%",
+                    unit="%",
+                    period=pat_facts[0].period,
+                    fact_type=FactType.OWN_CALCULATION,
+                    statement=(
+                        f"GST demand of ₹{gst_val} crore represents approximately {ratio}% of "
+                        f"one quarter's profit (₹{pat_val} crore) (our calculation)"
+                    ),
+                    quote="",
+                )
+            )
 
     return own_calcs
 

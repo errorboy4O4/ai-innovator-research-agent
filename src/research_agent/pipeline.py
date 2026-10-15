@@ -15,7 +15,12 @@ from .reconcile import reconcile
 from .sanitize import sanitise_all
 from .triage import triage_all
 from .verify import verify_and_repair
-from .write import build_writer_payload, write_brief, write_brief_baseline
+from .write import (
+    _strip_code_fence,
+    build_writer_payload,
+    write_brief,
+    write_brief_baseline,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +52,17 @@ def _repair_fn_factory(
         defect_list = "\n".join(f"- {i}" for i in issues)
         payload += f"\n\n## Defects found in previous draft (fix all of these):\n{defect_list}"
         payload += f"\n\nPrevious draft:\n{current_brief}"
-        payload += "\n\nRewrite the entire brief, fixing all defects listed above."
+        payload += (
+            "\n\nRewrite the entire brief, fixing all defects listed above. "
+            "Ensure the body text (sections 1-4) is strictly between 350 and 430 words."
+        )
 
-        return call_llm(
-            system_prompt + "\n\n" + write_prompt,
-            payload,
-            temperature=TEMPERATURE["write"],
+        return _strip_code_fence(
+            call_llm(
+                system_prompt + "\n\n" + write_prompt,
+                payload,
+                temperature=TEMPERATURE["write"],
+            )
         )
 
     return repair

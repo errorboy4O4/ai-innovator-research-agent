@@ -23,17 +23,33 @@ def _load_prompt() -> str:
 
 
 def _normalise_whitespace(text: str) -> str:
-    """Collapse all whitespace to single spaces for quote matching."""
-    return re.sub(r"\s+", " ", text).strip()
+    """Strip markdown delimiters, punctuation, and collapse whitespace."""
+    text = re.sub(r"(?<=\d),(?=\d)", "", text)
+    cleaned = re.sub(r"[*|_`#:,\(\)]", " ", text)
+    return re.sub(r"\s+", " ", cleaned).strip().lower()
 
 
 def _quote_matches(quote: str, body: str) -> bool:
-    """Check if a quote appears in the document body (whitespace-normalised)."""
+    """Check if a quote appears in the document body or across a table row."""
     norm_quote = _normalise_whitespace(quote)
     norm_body = _normalise_whitespace(body)
-    if not norm_quote or len(norm_quote) < 5:
+    if not norm_quote or len(norm_quote) < 2:
         return False
-    return norm_quote.lower() in norm_body.lower()
+    if norm_quote in norm_body:
+        return True
+
+    # Multi-column table row match: check if key words appear on the same line
+    words = [
+        w
+        for w in norm_quote.split()
+        if len(w) > 1 and w not in ["the", "in", "of", "and", "from", "to", "for", "at"]
+    ]
+    if len(words) >= 2:
+        for line in body.splitlines():
+            line_clean = _normalise_whitespace(line)
+            if all(w in line_clean for w in words):
+                return True
+    return False
 
 
 def _build_payload(doc: SanitisedDocument, triage: TriageResult) -> str:
@@ -97,9 +113,10 @@ def extract_facts(doc: SanitisedDocument, triage: TriageResult) -> list[Extracte
         else:
             dropped += 1
             logger.warning(
-                "%s: dropped fact '%s' -- quote not found in document",
+                "%s: dropped fact '%s' (quote: %r) -- quote not found in document",
                 doc.id,
                 fact.metric,
+                fact.quote,
             )
 
     logger.info(

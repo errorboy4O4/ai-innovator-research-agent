@@ -69,7 +69,7 @@ def _format_conflicts(conflicts: list[ConflictRecord]) -> str:
     for c in conflicts:
         lines.append(f"\nConflict: {c.metric} ({c.period})")
         for f in c.facts:
-            preferred = " ← PREFERRED" if f.fact_id == c.preferred_fact_id else ""
+            preferred = " <- PREFERRED" if f.fact_id == c.preferred_fact_id else ""
             lines.append(f"  - [{f.source_id}] {f.value} {f.unit}{preferred}")
         lines.append(f"  Resolution: {c.resolution}")
     return "\n".join(lines)
@@ -142,6 +142,15 @@ As-of date: {as_of}
 Write the research brief now, following the output skeleton exactly."""
 
 
+def _strip_code_fence(text: str) -> str:
+    s = text.strip()
+    if s.startswith("```"):
+        first_newline = s.find("\n")
+        if first_newline != -1 and s.endswith("```"):
+            return s[first_newline + 1 : -3].strip()
+    return s
+
+
 def write_brief(
     ticker: str,
     as_of: str,
@@ -167,6 +176,7 @@ def write_brief(
     )
 
     brief = call_llm(full_system, payload, temperature=TEMPERATURE["write"])
+    brief = _strip_code_fence(brief)
     logger.info("Brief generated (%d chars)", len(brief))
     return brief
 
@@ -190,4 +200,4 @@ def write_brief_baseline(
         doc_text += doc.body
 
     payload = f"Ticker: {ticker}\n\nDocuments:\n{doc_text}\n\nWrite the research brief."
-    return call_llm(system_prompt, payload, temperature=0.3)
+    return _strip_code_fence(call_llm(system_prompt, payload, temperature=0.3))

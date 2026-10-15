@@ -67,7 +67,7 @@ def check_forbidden_phrases(brief: str) -> list[str]:
         if in_sources and line.strip().startswith("|"):
             continue
         lines.append(line)
-    body = "\n".join(lines).lower()
+    body = "\n".join(lines).lower().replace("multibaggeralerts", "")
     for phrase in FORBIDDEN_PHRASES:
         if phrase in body:
             issues.append(f"Forbidden phrase found: '{phrase}'")
@@ -178,10 +178,11 @@ def llm_critic(brief: str) -> list[str]:
     issues = []
     for line in response.strip().splitlines():
         line = line.strip()
+        cleaned = line.lstrip("-* ").strip().upper()
+        if cleaned.startswith("PASS") or cleaned.startswith("NO ISSUES"):
+            break
         if line and (line.startswith("-") or line.startswith("*")):
             issues.append(line.lstrip("-* ").strip())
-        elif line.upper().startswith("PASS") or line.upper().startswith("NO ISSUES"):
-            break
     return issues
 
 

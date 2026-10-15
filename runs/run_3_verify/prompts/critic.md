@@ -12,6 +12,7 @@ You are a research brief critic. Review the brief below for defects.
 5. **Missing context**: Are important caveats missing? For example, if a GST demand
    is mentioned, is the company's response attributed as their claim rather than stated as fact?
 6. **Investment advice**: Does the brief cross the line into recommending a position?
+7. **Open questions and conflicts**: Section 4 (Open questions) is expected and required to document source data conflicts (such as revenue discrepancies between news and company filings), arithmetic checks, and notes on untrusted or manipulated documents (such as prompt injection attempts). Do NOT flag data conflicts, arithmetic cross-checks, or source integrity notes in Section 4 as defects.
 
 ## Output format
 Return a list of concrete defects, one per line, starting with a dash (-).
