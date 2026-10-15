@@ -1,0 +1,23 @@
+{
+  "ticker": "SRVCABLE",
+  "as_of": "23 Sep 2026",
+  "model": "gemini-2.0-flash",
+  "variant": "baseline",
+  "timestamp": "20260923_101500",
+  "documents_loaded": 8,
+  "findings": [],
+  "triage_results": [],
+  "facts_extracted": 0,
+  "facts_dropped": 0,
+  "conflicts": [],
+  "verification_passed": false,
+  "verification_issues": [
+    "Forbidden phrase found: 'price target'",
+    "Forbidden phrase found: 'analyst consensus'",
+    "Stale data reported as current: 35% pledge from 2024",
+    "Wrong entity included: S6 (Nagpur City Times cable TV entity)",
+    "Contradictory revenue figure quoted without resolution"
+  ],
+  "repair_attempts": 0,
+  "brief_word_count": 312
+}
