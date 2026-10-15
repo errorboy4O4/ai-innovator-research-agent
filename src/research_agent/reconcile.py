@@ -230,8 +230,7 @@ def run_arithmetic_checks(
     gst_facts = [
         f
         for f in facts
-        if any(k in f.metric.lower() for k in ["gst", "tax_demand"])
-        and _parse_numeric(f.value)
+        if any(k in f.metric.lower() for k in ["gst", "tax_demand"]) and _parse_numeric(f.value)
     ]
     pat_facts = [
         f

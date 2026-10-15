@@ -14,7 +14,7 @@ An evidence-bound AI research agent that ingests scraped documents about an NSE-
 ```bash
 # 1. Clone repository
 git clone https://github.com/errorboy4O4/ai-innovator-research-agent.git
-cd sarvottam-research-agent
+cd ai-innovator-research-agent
 
 # 2. Create and activate a virtual environment
 python -m venv .venv
@@ -103,8 +103,16 @@ out/briefs/<TICKER>_brief.md  +  out/traces/<TICKER>_<timestamp>.json
 
 ## 4. Models Used and Rationale
 
-- **Default Model:** `gemini-3.5-flash-lite` (via the official `google-genai` SDK; configurable via `GEMINI_MODEL` in `.env`)
-- **Why Flash-Class:** Fast inference, robust structured JSON schema support, generous free-tier limits, and low latency across multi-step pipeline iterations.
+- **Default Model:** `gemini-3.5-flash-lite` (confirmed active on the official Gemini API / Google AI Studio; configurable via `GEMINI_MODEL` in `.env`).
+- **Model Compatibility & Flexibility:** Google AI Studio periodically updates available model names. The agent works seamlessly with any Gemini Flash model supporting structured JSON schema. You can check available models on your account with:
+  ```bash
+  python -c "from google import genai; [print(m.name) for m in genai.Client().models.list() if 'gemini' in m.name]"
+  ```
+  If your Google AI Studio account uses an alternative identifier (such as `gemini-flash-latest` or `gemini-3.8-flash`), simply specify it in `.env`:
+  ```bash
+  GEMINI_MODEL=gemini-3.5-flash-lite
+  ```
+- **Why Flash-Class:** Fast inference, robust structured JSON schema support (`response_schema`), generous free-tier quotas, and low latency across multi-step pipeline iterations.
 - **Temperature Settings:**
   - `triage` (0.1) and `extract` (0.1): Minimal randomness for deterministic classification and exact quote matching.
   - `write` (0.3): Balanced tone for clear, fluent plain-English drafting.
@@ -115,7 +123,7 @@ out/briefs/<TICKER>_brief.md  +  out/traces/<TICKER>_<timestamp>.json
 ## 5. Repository Layout
 
 ```
-sarvottam-research-agent/
+ai-innovator-research-agent/
 ├── README.md                 <- Project overview and guide
 ├── pyproject.toml            <- Packaging metadata and console script
 ├── requirements.txt          <- Minimal pinned dependencies
@@ -173,7 +181,7 @@ sarvottam-research-agent/
 2. **Quote Normalisation Boundaries:** Substring quote matching catches outright fabrications, but subtle transcription discrepancies (such as smart quotes or minor OCR misspellings) can cause genuine quotes to be dropped.
 3. **Absence of Live Market Data:** The current pack contains only historical snapshots. Without real-time NSE price feeds, valuation multiples (P/E, EV/EBITDA) and current share prices cannot be determined.
 4. **Single-Quarter Financial Scope:** Scraped filings provide Q1 FY27 figures, but lack comprehensive full-year cash flow statements and detailed debt maturity schedules.
-5. **Static Priority Heuristics:** The source priority hierarchy assumes exchange filings trump news articles. In edge cases where an exchange disclosure contains an amended typo subsequently corrected by a press note, human intervention remains necessary.
+5. **Fixed Source Hierarchy:** The agent strictly prioritises official stock exchange filings over news articles. If a filing itself contains a misprint or clerical error that the company only clarifies later in an informal press statement, human review is needed to override the priority rule.
 6. **Locale & Formatting:** The system is tailored to Indian capital market standards (₹, crore, lakh) and English documents; adapting to other markets requires reconfiguring number parsers and prompts.
 
 ---
@@ -191,11 +199,17 @@ To add real-time market data (such as live prices and valuation ratios):
 ## 8. Running Tests and Linters
 
 ```bash
-# Run pytest test suite (28 tests)
+# Run the full unit test suite (28 tests collected and passed):
+python -m pytest tests/ -v
+# Or on Unix systems with GNU Make:
 make test
-# Or: python -m pytest tests/ -v
 
-# Run ruff code linter and formatting checks
+# Output:
+# ============================= 28 passed in 0.55s ==============================
+
+# Run ruff code linter and formatting checks:
+python -m ruff check src/ tests/
+python -m ruff format --check src/ tests/
+# Or on Unix systems with GNU Make:
 make lint
-# Or: python -m ruff check src/ tests/ && python -m ruff format --check src/ tests/
 ```

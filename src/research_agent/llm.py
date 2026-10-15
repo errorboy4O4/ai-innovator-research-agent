@@ -42,6 +42,19 @@ def get_model_name() -> str:
     return os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 
 
+def _handle_api_error(e: Exception, model: str) -> None:
+    error_str = str(e)
+    if "404" in error_str or "not_found" in error_str.lower():
+        msg = (
+            f"Model '{model}' was not found or is not accessible (404 Not Found).\n"
+            f"Set GEMINI_MODEL in .env to a model active on your Google AI Studio account.\n"
+            f'Check models with: python -c "from google import genai; '
+            f'[print(m.name) for m in genai.Client().models.list()]"\n'
+            f"Original API error: {e}"
+        )
+        raise RuntimeError(msg) from e
+
+
 def call_llm(
     system_prompt: str,
     user_payload: str,
@@ -76,6 +89,7 @@ def call_llm(
                 )
                 time.sleep(delay)
                 continue
+            _handle_api_error(e, model)
             raise
 
     raise RuntimeError(f"Failed after {MAX_RETRIES} retries due to rate limiting")
@@ -120,6 +134,7 @@ def call_llm_structured(
                 )
                 time.sleep(delay)
                 continue
+            _handle_api_error(e, model)
             raise
 
     raise RuntimeError(f"Failed after {MAX_RETRIES} retries due to rate limiting")
@@ -160,6 +175,7 @@ def call_llm_json(
                 )
                 time.sleep(delay)
                 continue
+            _handle_api_error(e, model)
             raise
 
     raise RuntimeError(f"Failed after {MAX_RETRIES} retries due to rate limiting")
