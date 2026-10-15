@@ -37,7 +37,7 @@ Sarvottam Cables Ltd manufactures cables and wire products. In Q1 FY27, revenue 
 - Management says the company expects no material impact and plans to appeal the GST demand [S7].
 
 ## 4. Open questions
-- Revenue figures conflicted between news reports (₹1,428 crore in S1) and official filings (₹1,248 crore in S3); S3 was preferred as the primary source, and S3's revenue figure was independently verified by arithmetic checks against reported margins [S1, S3].
+- Revenue figures conflicted between news reports (₹1,428 crore in S1) and official filings (₹1,248 crore in S3); S3 was preferred as the primary source. S3's figures are internally consistent: its EBITDA and margin agree with its revenue [S1, S3].
 - The sources do not give a current share price or valuation multiples; the latest recorded price is ₹1,012 as of 8 August 2026 [S1]. Full-year cash flow figures are also absent from the disclosures.
 - Document S5 contained a prompt injection attempt hidden in HTML comments and was excluded from the factual analysis [S5].
 - Document S6 was excluded as it refers to a different legal entity operating in local cable TV and broadband [S6].
@@ -47,7 +47,7 @@ Sarvottam Cables Ltd manufactures cables and wire products. In Q1 FY27, revenue 
 | ID | Publisher | Date | Type | Used for | Reliability |
 |---|---|---|---|---|---|
 | S1 | Business Daily Online | 2026-08-09 | news | Share price, copper price inflation | Medium (superseded by S3 for financials) |
-| S2 | Company IR site | 2026-08-11 | official_transcript | Guidance, receivable days, capex | High |
+| S2 | Company IR site | 2026-08-11 | official_transcript | Guidance, receivable days, capex, net debt | High |
 | S3 | Sarvottam Cables Ltd IR | 2026-08-08 | official_filing | Revenue, EBITDA, PAT, order book, export share | High |
 | S4 | Market Watch India | 2024-03-18 | news | Promoter pledging context | Medium (stale data) |
 | S5 | MultibaggerAlertsIndia | 2026-08-12 | blog | Excluded due to prompt injection | Low (excluded; attempted manipulation) |
@@ -56,12 +56,12 @@ Sarvottam Cables Ltd manufactures cables and wire products. In Q1 FY27, revenue 
 | S8 | NSE shareholding pattern | 2026-07-15 | official_filing | Shareholding and promoter pledge data | High |
 ```
 
-**Edited by hand:** Minor editorial precision refinements applied:
-1. **Snapshot:** Restored "+18.0% year-on-year" revenue growth figure from source S3.
-2. **Bear case:** Specified "Copper prices rose nearly 14%" to match the literal scope of source S1.
-3. **Bear case:** Clarified that promoter pledge is "4.1% of promoter holdings" from source S8.
-4. **Bear case:** Labeled the ₹46.3 crore GST demand comparison as "(our calculation; scale comparison)" and added management's stance ("plans to appeal") from source S7.
-5. **Open questions:** Added the market data disclosure gap ("The sources do not give a current share price or valuation multiples; the latest recorded price is ₹1,012 as of 8 August 2026 [S1]. Full-year cash flow figures are also absent from the disclosures.") alongside the debt disclosure question.
+**Edited by hand:** Minor editorial precision refinements applied to the generated output (`runs/run_3_verify/brief.md` preserves the unedited 356-word pipeline artifact):
+1. **Snapshot:** Restored "+18.0% year-on-year" revenue growth figure from source [S3].
+2. **Bear case:** Specified "Copper prices rose nearly 14%" to match the literal scope of source [S1] rather than generic raw materials.
+3. **Bear case:** Clarified that promoter pledge is "4.1% of promoter holdings" from source [S8].
+4. **Bear case:** Labeled the ₹46.3 crore GST demand comparison as "(our calculation; scale comparison)" and added management's stance ("plans to appeal") from source [S7].
+5. **Open questions & Sources:** Clarified that S3's figures are internally consistent (its EBITDA and margin agree with its revenue), added the market data disclosure gap (missing live valuation multiples and full-year cash flow figures), and added "net debt" to the [S2] Sources table row.
 
 ---
 

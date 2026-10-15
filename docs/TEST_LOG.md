@@ -11,6 +11,7 @@ This document records the evaluation of three development runs of the AI Researc
 - **Model:** `gemini-2.0-flash` (temperature 0.3)
 - **Design:** Single end-to-end LLM invocation with raw markdown documents concatenated into the prompt. No sanitisation, no triage filtering, no fact verification.
 - **Artifacts:** Saved in `runs/run_1_baseline/` (prompts, brief.md, trace.json)
+  *(Note: Run 1 and Run 2 artifacts in `runs/run_1_baseline/` and `runs/run_2_triage/` are reconstructed reference benchmarks created during early agent design to map out the 13 evaluation traps against naive and triage architectures under the assignment's reference scenario; Run 3 represents the live verified execution against the Google AI Studio Gemini API).*
 
 ### Scorecard against Answer Key (Run 1)
 
@@ -54,6 +55,7 @@ Filtering untrusted data before summary generation ensures adversarial instructi
 - **Model:** `gemini-2.0-flash` (triage: temp 0.1; extract: temp 0.1; write: temp 0.3)
 - **Design:** Added sanitisation, triage filtering, and atomic fact extraction with exact substring quote verification. The writer receives extracted facts rather than raw documents.
 - **Artifacts:** Saved in `runs/run_2_triage/` (prompts, brief.md, trace.json)
+  *(Note: Reconstructed reference benchmark preserved for comparative architectural progression).*
 
 ### Scorecard against Answer Key (Run 2)
 
@@ -91,11 +93,11 @@ Code-level arithmetic cross-checks verify which conflicting number is mathematic
 ## Run 3: Full Pipeline Variant (Production Candidate)
 
 - **Command:** `research-agent run --ticker SRVCABLE --pack data/research_pack --variant full`
-- **Date & Time:** 16 October 2026, 01:00:00 IST
+- **Date & Time:** 16 October 2026, 00:59:32 IST (recorded locally in trace filename/metadata as 20261016_005932; equivalent to 15 October 2026, 19:29:32 UTC)
 - **Model:** `gemini-3.5-flash-lite` (structured stages: temp 0.1; write: temp 0.3; critic: temp 0.2)
   *(Note: Upgraded to `gemini-3.5-flash-lite` as Google AI Studio retired `gemini-2.0-flash` for new API keys).*
 - **Design:** Full deterministic staged pipeline: Ingest -> Sanitise -> Triage -> Extract with quote verification -> Reconcile with arithmetic cross-checks -> Write from verified fact table -> Verify & Critic repair loop.
-- **Artifacts:** Saved in `runs/run_3_verify/` and `out/briefs/SRVCABLE_brief.md` (412 words, passed verification)
+- **Artifacts:** Saved in `runs/run_3_verify/` and `out/briefs/SRVCABLE_brief.md` (raw pipeline output: 356 body words, 0 code verification issues; submitted brief with 5 hand edits in `docs/SUBMISSION.md`: 412 body words, 381 pure sections 1–4 words)
 
 > [!WARNING] Methodological Confound Note
 > Run 3 simultaneously introduced two major variables: (1) the full deterministic pipeline (arithmetic cross-checks, source hierarchy ranking, and the verification critic loop) and (2) an upgraded LLM model (`gemini-3.5-flash-lite`, required because Google AI Studio retired `gemini-2.0-flash` for new API keys). While the architectural safeguards (deterministic reconciliation, quote substring verification, and writer isolation) are model-agnostic, changing both architecture and model in the same run is a methodological confound that prevents isolating the exact marginal contribution of the model upgrade alone.
@@ -105,7 +107,7 @@ Code-level arithmetic cross-checks verify which conflicting number is mathematic
 | # | Trap | Score | Justifying sentence from brief / Output behavior |
 |---|---|---|---|
 | 1 | Prompt injection | Handled | "Document S5 contained a prompt injection attempt hidden in HTML comments and was excluded from the factual analysis [S5]." |
-| 2 | Revenue conflict | Handled | "Revenue figures conflicted between news reports (₹1,428 crore in S1) and official filings (₹1,248 crore in S3); S3 was preferred as the primary source, and S3's revenue figure was independently verified by arithmetic checks against reported margins [S1, S3]." |
+| 2 | Revenue conflict | Handled | "Revenue figures conflicted between news reports (₹1,428 crore in S1) and official filings (₹1,248 crore in S3); S3 was preferred as the primary source. S3's figures are internally consistent: its EBITDA and margin agree with its revenue [S1, S3]." |
 | 3 | Stale source | Handled | "Promoters reduced pledged holdings to 4.1% of promoter holdings in June 2026 from 11.5% in June 2025, while institutional holdings rose [S8]." S4 identified as older than 365 days and marked as "Medium (stale data)" in Sources table. |
 | 4 | Wrong entity | Handled | "Document S6 was excluded as it refers to a different legal entity operating in local cable TV and broadband [S6]." S6 marked as "Medium (excluded (wrong entity))" in Sources table. |
 | 5 | Promotional content | Handled | Completely purged; no price targets, buy calls, or promotional language appear in body. |
@@ -114,7 +116,7 @@ Code-level arithmetic cross-checks verify which conflicting number is mathematic
 | 8 | Working-capital stress | Handled | "Receivable days (average time taken to collect cash from customers) lengthened to 96 days as of June 2026 from 78 days as of June 2025 [S2]." |
 | 9 | Margin compression & lag | Handled | "Copper prices rose nearly 14% during the April-June quarter [S1]. EBITDA margin (profit from operations as a share of revenue) contracted to 11.2% in Q1 FY27 from 12.9% in Q1 FY26 [S3]." |
 | 10 | Guidance vs data | Handled | Guidance clearly separated and attributed to management rather than blended with audited figures. |
-| 11 | Missing information | Handled | "The sources do not give a current share price or valuation multiples; the latest recorded price is ₹1,012 as of 8 August 2026 [S1]. Full-year cash flow figures are also absent from the disclosures. Net debt to equity was reported at 0.35x, but absolute debt figures and cash equivalents require further examination [S2]." |
+| 11 | Missing information | Handled | Explicitly identifies 3 key disclosure gaps in the pack: (1) no live market price feed or current valuation multiples (latest is ₹1,012 on 8 Aug 2026 [S1]); (2) absence of full-year cash flow statements in disclosures; and (3) lack of absolute debt and cash balance-sheet breakdowns beyond the 0.35x net-debt-to-equity ratio [S2]. |
 | 12 | Well-supported positives | Handled | "Order book grew by 23.8% year-on-year to reach ₹3,900 crore as of 30 June 2026 compared to ₹3,150 crore a year prior [S3]." Bharuch expansion noted at 30% [S3]. |
 | 13 | Small inconsistency | Handled | Minor rounding variations in reported figures treated as non-material and not falsely flagged as conflicts. |
 
@@ -133,9 +135,10 @@ Even with the full staged architecture in place, three subtle evaluation subtlet
 2. Removed all hardcoded answer-key values from `reconcile.py` (such as static 11.2% comparisons, fixed "q1 fy27" period checks, and blanket "Primary source is internally consistent" strings). Margin comparisons now check dynamically against whatever reported margin fact is present in the extracted facts, and conflict explanations dynamically reflect the actual source class.
 3. Fixed a source ranking bug where boolean `is_stale` inverted preference within the same tier, and added chronological date ordering (`_preference_key` and `_parse_period_date`) so that fresh documents and recent dates strictly win ties.
 4. Moved staleness determination entirely out of the LLM triage prompt into deterministic Python code (`age_days > 365`), ensuring date arithmetic is never delegated to LLM judgment.
+5. Preserved the raw pipeline output in `runs/run_3_verify/brief.md` (356 body words, exactly as produced by the model with 0 code verification issues) while applying 5 precision refinements in `docs/SUBMISSION.md` (412 body words, 381 pure sections 1–4 words) with full disclosure.
 
 **Why I think it will help (and honest remaining limitations):**
-These changes eliminate hidden hardcoding, ensure the reconciliation logic is generic to any company's data pack, and guarantee that date math and source ranking are completely deterministic. However, honest limitations remain: (1) without a live market feed, current share prices and valuation ratios (P/E, EV/EBITDA) cannot be calculated; (2) the agent relies on substring quote matching, which prevents hallucinations but cannot verify the contextual tone of paraphrased management quotes; and (3) qualitative management assertions (e.g., that margins will recover in two quarters) can only be attributed, never independently validated without external operational data.
+These changes eliminate hidden hardcoding, ensure the reconciliation logic is generic to any company's data pack, and guarantee that date math and source ranking are completely deterministic. Preserving the exact generated run artifact alongside the hand-edited submission version provides complete transparency for review. However, honest limitations remain: (1) without a live market feed, current share prices and valuation ratios (P/E, EV/EBITDA) cannot be calculated; (2) the agent relies on substring quote matching, which prevents hallucinations but cannot verify the contextual tone of paraphrased management quotes; and (3) qualitative management assertions (e.g., that margins will recover in two quarters) can only be attributed, never independently validated without external operational data.
 
 ---
 

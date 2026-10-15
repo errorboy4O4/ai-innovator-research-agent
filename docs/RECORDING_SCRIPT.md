@@ -48,19 +48,30 @@ Then open the trace JSON file briefly.*
 > margin, while ₹140 divided by ₹1,428 gives 9.8%, which doesn't — and prefers the
 > primary source. The conflict is surfaced in Open Questions so the reader knows."
 
-## 1:50–2:30 — Honest Limitation
+## 1:50–2:20 — Generated Output vs Hand Edits (Transparency)
 
-> "An honest limitation: the agent cannot verify management claims. When the MD says
-> margins will recover in two quarters, or that the GST demand won't have a material
-> impact, the agent can only attribute the claim — it can't check it. It also has no
-> live price data, no valuation multiples, and no peer comparison. And the LLM triage
-> can sometimes misclassify unusual sources — the code overrides help, but they're not
-> perfect.
+> "In `runs/run_3_verify/brief.md`, you can see the raw generated output straight from
+> the pipeline. For the final submission in `docs/SUBMISSION.md`, I've plainly disclosed
+> five precision hand-edits: restoring the 18% YoY growth figure, specifying copper price
+> inflation rather than generic raw materials, clarifying promoter pledge of holdings,
+> framing the GST demand as a multi-year scale comparison, and highlighting market data gaps.
+> Showing the raw output next to the final submission shows the exact boundary between
+> automated extraction and retail-grade editorial refinement."
+
+*On screen: side-by-side view of `runs/run_3_verify/brief.md` and `docs/SUBMISSION.md`.*
+
+## 2:20–2:45 — Honest Limitations & Future Work
+
+> "An honest limitation: the agent cannot verify forward-looking management claims.
+> When management says margins will recover in two quarters or that the GST demand will
+> have no material impact, the agent attributes the forecast but cannot independently
+> validate it. Furthermore, the scraped research pack contains no live market price feed,
+> no valuation multiples (P/E, EV/EBITDA), and no full-year cash flow statements.
 >
-> If I had more time, I'd add a live data stage that fetches current prices and basic
-> valuation ratios from NSE, running them through the same sanitise-triage-extract
-> pipeline."
+> If I had more time, I would connect a live exchange API to pull market valuations and
+> balance sheet data directly into the fact table."
 
-## 2:30–2:45 — Close
+## 2:45–3:00 — Close
 
-> "The code is in the GitHub repo linked in my submission. Thanks for reviewing."
+> "All code, unit tests, and evaluation traces are available in the public GitHub repo.
+> Thanks for reviewing."
